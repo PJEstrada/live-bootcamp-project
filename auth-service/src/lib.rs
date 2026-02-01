@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::sync::Arc;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::Router;
@@ -8,6 +9,11 @@ use tokio::net::TcpListener;
 use tower_http::services::ServeDir;
 
 pub mod routes;
+
+pub mod domain;
+pub mod services;
+pub mod app_state;
+
 // This struct encapsulates our application-related logic.
 pub struct Application {
     server: Serve<TcpListener, Router, Router>,
@@ -17,7 +23,7 @@ pub struct Application {
 }
 
 impl Application {
-    pub async fn build(address: &str) -> Result<Self, Box<dyn Error>> {
+    pub async fn build(app_state: app_state::AppState, address: &str) -> Result<Self, Box<dyn Error>> {
         let assets_dir = ServeDir::new("assets");
         // Move the Router definition from `main.rs` to here.
         // Also, remove the `hello` route.
@@ -28,7 +34,8 @@ impl Application {
             .route("/login", post(login))
             .route("/verify-2fa", post(verify_2fa))
             .route("/logout", post(logout))
-            .route("/verify-token", post(verify_token));
+            .route("/verify-token", post(verify_token))
+            .with_state(app_state);
 
 
 
