@@ -1,20 +1,28 @@
 use std::sync::{Arc};
+use reqwest::cookie::Jar;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 use auth_service::Application;
-use auth_service::app_state::{AppState, UserStoreType};
+use auth_service::app_state::{AppState, BannedTokenStoreType, UserStoreType};
+use auth_service::services::banned_token_store::HashsetBannedTokenStore;
 use auth_service::services::hashmap_user_store::HashmapUserStore;
+use auth_service::utils::constants::{test, JWT_COOKIE_NAME};
 
 pub struct TestApp {
     pub address: String,
+    pub cookie_jar: Arc<Jar>,
     pub http_client: reqwest::Client,
+    pub banned_token_store: BannedTokenStoreType
 }
 
 impl TestApp {
     pub async fn new() -> Self {
         let user_store = Arc::new(RwLock::new(HashmapUserStore::default()));
-        let app_state = AppState::new(user_store);
-        let app = Application::build(app_state, "127.0.0.1:0").await.expect("Failed to build application service");
+        let banned_token_store =  Arc::new(RwLock::new(HashsetBannedTokenStore::default()));
+        let app_state = AppState::new(user_store, banned_token_store.clone());
+        let app = Application::build(app_state, test::APP_ADDRESS)
+            .await
+            .expect("Failed to build app");
         let address = format!("http://{}", app.address.clone());
 
         // Run the auth service in a separate async task to avoid blocking the main thread.
@@ -22,10 +30,16 @@ impl TestApp {
         let _ = tokio::spawn(app.run());
 
         let http_client = reqwest::Client::new();
-
+        let cookie_jar = Arc::new(Jar::default());
+        let http_client = reqwest::Client::builder()
+            .cookie_provider(cookie_jar.clone())
+            .build()
+            .unwrap();
         Self {
             address,
+            cookie_jar,
             http_client,
+            banned_token_store,
         }
     }
 
@@ -50,8 +64,14 @@ impl TestApp {
         self.http_client.post(&format!("{}/signup", self.address)).send().await.unwrap()
     }
 
-    pub async fn login(&self) -> reqwest::Response {
-        self.http_client.post(&format!("{}/login", self.address)).send().await.unwrap()
+    pub async fn post_login<Body>(&self, body: &Body) -> reqwest::Response
+        where Body: serde::Serialize, {
+        self.http_client
+            .post(&format!("{}/login", &self.address))
+            .json(body)
+            .send()
+            .await
+            .expect("Failed to execute request.")
     }
 
     pub async fn verify_2fa(&self) -> reqwest::Response {
@@ -62,8 +82,16 @@ impl TestApp {
         self.http_client.post(&format!("{}/logout", self.address)).send().await.unwrap()
     }
 
-    pub async fn verify_token(&self) -> reqwest::Response {
-        self.http_client.post(&format!("{}/verify-token", self.address)).send().await.unwrap()
+    pub async fn post_verify_token<Body>(&self, body: &Body) -> reqwest::Response
+    where
+        Body: serde::Serialize,
+    {
+        self.http_client
+            .post(format!("{}/verify-token", &self.address))
+            .json(body)
+            .send()
+            .await
+            .expect("Failed to execute request.")
     }
 
 
@@ -71,4 +99,35 @@ impl TestApp {
 
 pub  fn get_random_email() -> String {
     format!("{}@example.com", Uuid::new_v4())
+}
+
+pub async fn signup_and_login(app: &TestApp) -> String {
+    let random_email = get_random_email();
+
+    let signup_body = serde_json::json!({
+        "email": random_email,
+        "password": "password123",
+        "requires2FA": false
+    });
+
+    let response = app.post_signup(&signup_body).await;
+
+    assert_eq!(response.status().as_u16(), 201);
+
+    let login_body = serde_json::json!({
+        "email": random_email,
+        "password": "password123",
+    });
+
+    let response = app.post_login(&login_body).await;
+
+    assert_eq!(response.status().as_u16(), 200);
+
+    let auth_cookie = response
+        .cookies()
+        .find(|cookie| cookie.name() == JWT_COOKIE_NAME)
+        .expect("No auth cookie found");
+
+    assert!(!auth_cookie.value().is_empty());
+    auth_cookie.value().to_owned()
 }
