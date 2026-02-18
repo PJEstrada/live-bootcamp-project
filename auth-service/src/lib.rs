@@ -44,7 +44,7 @@ impl Application {
             .fallback_service(assets_dir)
             .route("/signup", post(self::routes::signup))
             .route("/login", post(self::routes::login))
-            .route("/verify-2fa", post(verify_2fa))
+            .route("/verify-2fa", post(self::routes::verify_2fa))
             .route("/logout", post(self::routes::logout))
             .route("/verify-token", post(self::routes::verify_token))
             .with_state(app_state)

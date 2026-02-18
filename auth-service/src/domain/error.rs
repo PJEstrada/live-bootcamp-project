@@ -2,6 +2,13 @@ use axum::http::StatusCode;
 use axum::Json;
 use axum::response::{IntoResponse, Response};
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum TwoFaError {
+    #[error("invalid 2FA code")]
+    InvalidCode,
+}
 
 pub enum AuthAPIError {
     UserAlreadyExists,
