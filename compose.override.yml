@@ -4,4 +4,5 @@ services:
       context: ./app-service # specify directory where local Dockerfile is located
   auth-service:
     build:
-      context: ./auth-service # specify directory where local Dockerfile is located
+      context: . # use repo root so auth-service-macros is available
+      dockerfile: ./auth-service/Dockerfile
