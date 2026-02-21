@@ -1,9 +1,9 @@
 use auth_service::domain::error::ErrorResponse;
 use crate::helpers::{get_random_email, TestApp};
+use auth_service_macros::test_with_cleanup;
 
-#[tokio::test]
+#[test_with_cleanup]
 async fn should_return_201_if_valid_input() {
-    let app = TestApp::new().await;
     let random_email = get_random_email();
     let body =         serde_json::json!({
             "email": random_email,
@@ -18,10 +18,9 @@ async fn should_return_201_if_valid_input() {
         body
     );
 }
-#[tokio::test]
-async fn should_return_422_if_malformed_input() {
-    let app = TestApp::new().await;
 
+#[test_with_cleanup]
+async fn should_return_422_if_malformed_input() {
     let random_email = get_random_email();
 
     // TODO: add more malformed input test cases
@@ -58,9 +57,8 @@ async fn should_return_422_if_malformed_input() {
     }
 }
 
-#[tokio::test]
+#[test_with_cleanup]
 async fn should_return_400_if_invalid_input() {
-    let app = TestApp::new().await;
     // The signup route should return a 400 HTTP status code if an invalid input is sent.
     // The input is considered invalid if:
     // - The email is empty or does not contain '@'
@@ -95,9 +93,8 @@ async fn should_return_400_if_invalid_input() {
     }
 }
 
-#[tokio::test]
+#[test_with_cleanup]
 async fn should_return_409_if_email_already_exists() {
-    let app = TestApp::new().await;
 
     let payload = serde_json::json!({
             "password": "123456789",

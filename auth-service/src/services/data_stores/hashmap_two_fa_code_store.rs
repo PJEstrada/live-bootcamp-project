@@ -42,9 +42,9 @@ impl TwoFACodeStore for HashmapTwoFACodeStore {
 }
 #[cfg(test)]
 mod tests {
-    use crate::domain::Password;
+    use crate::domain::HashedPassword;
     use crate::domain::user::User;
-    use crate::services::hashmap_user_store::HashmapUserStore;
+    use crate::services::data_stores::hashmap_user_store::HashmapUserStore;
     use super::*;
 
     #[tokio::test]

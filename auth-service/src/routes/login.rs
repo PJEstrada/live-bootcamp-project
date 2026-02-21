@@ -8,7 +8,7 @@ use crate::{app_state::AppState, domain::user::User};
 use crate::domain::data_stores::{LoginAttemptId, TwoFaCode};
 use crate::domain::email::Email;
 use crate::domain::error::AuthAPIError;
-use crate::domain::Password;
+use crate::domain::HashedPassword;
 use crate::routes::SignupResponse;
 use crate::utils::auth::generate_auth_cookie;
 
@@ -20,14 +20,15 @@ pub async fn login(State(state): State<AppState>,
         Ok(email) => email,
         Err(_) => return (jar, Err(AuthAPIError::InvalidCredentials))
     };
-    let password = match Password::parse( request.password) {
+
+    let _ = match HashedPassword::parse(request.password.clone()).await {
         Ok(password) => password,
         Err(_) => return (jar, Err(AuthAPIError::InvalidCredentials))
     };
 
     let user_store = &state.user_store.read().await;
 
-    if user_store.validate_user(&email, &password).await.is_err() {
+    if user_store.validate_user(&email, request.password.as_ref()).await.is_err() {
         return (jar, Err(AuthAPIError::IncorrectCredentials))
     }
 

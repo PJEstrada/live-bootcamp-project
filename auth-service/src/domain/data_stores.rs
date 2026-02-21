@@ -3,7 +3,7 @@ use rand::Rng;
 use serde::Deserialize;
 use crate::domain::email::Email;
 use crate::domain::error::TwoFaError;
-use crate::domain::Password;
+use crate::domain::HashedPassword;
 use crate::domain::user::User;
 
 #[async_trait::async_trait]
@@ -20,7 +20,7 @@ pub trait UserStore {
 
      async fn get_user(&self, email: &Email) -> Result<User, UserStoreError> ;
 
-     async  fn validate_user(&self, email: &Email, password: &Password) -> Result<(), UserStoreError> ;
+     async  fn validate_user(&self, email: &Email, password: &str) -> Result<(), UserStoreError> ;
 }
 
 // This trait represents the interface all concrete 2FA code stores should implement
@@ -51,6 +51,7 @@ pub enum UserStoreError {
 #[derive(Debug, PartialEq)]
 pub enum BannedTokenStoreError {
     TokenAlreadyBanned,
+    UnexpectedError,
 }
 
 
