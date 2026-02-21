@@ -16,6 +16,10 @@ while IFS= read -r line; do
     # Split the line into key and value
     key=$(echo "$line" | cut -d '=' -f1)
     value=$(echo "$line" | cut -d '=' -f2-)
+    # Skip DATABASE_URL since compose.yml defines it for container networking
+    if [[ "$key" == "DATABASE_URL" ]]; then
+      continue
+    fi
     # Export the variable
     export "$key=$value"
   fi
